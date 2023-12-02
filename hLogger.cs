@@ -3,6 +3,15 @@ using System.Runtime.CompilerServices;
 
 namespace HLogger {
 
+	/// <summary>
+	/// The `hLogger` class is a static utility class providing a logging tool for C# applications. 
+	/// It offers various log levels, console output, file logging, and configuration options.
+	/// </summary>
+	/// <remarks>
+	/// This class simplifies logging in your application by providing easy-to-use methods for logging messages 
+	/// at different levels such as Info, Log, Debug, Warning, Error, Exception, and Critical.
+	/// Users can customize logging behavior, including source location details in log files and setting log levels.
+	/// </remarks>
 	public static class hLogger {
 		/// <summary>
 		/// Represents the severity levels for logging messages.
@@ -104,10 +113,12 @@ namespace HLogger {
 		/// Users are encouraged to only populate the 'message' parameter, allowing other details to be automatically captured.
 		/// The calling member's name, source file path, and source line number are automatically captured.
 		/// </remarks>
-		public static void Info(string message,
-			[CallerMemberName] string memberName = "",
-			[CallerFilePath] string sourceFilePath = "",
-			[CallerLineNumber] int sourceLineNumber = 0) {
+		public static void Info(string message) {
+			/*,
+				[CallerMemberName] string memberName = "",
+				[CallerFilePath] string sourceFilePath = "",
+				[CallerLineNumber] int sourceLineNumber = 0
+			*/
 
 			if (_logLevel > LogLevel.Info) return;
 			Console.Write("[hLogger] ");
@@ -129,10 +140,7 @@ namespace HLogger {
 		/// Users are encouraged to only populate the 'message' parameter, allowing other details to be automatically captured.
 		/// The calling member's name, source file path, and source line number are automatically captured.
 		/// </remarks>
-		public static void Log(string message,
-			[CallerMemberName] string memberName = "",
-			[CallerFilePath] string sourceFilePath = "",
-			[CallerLineNumber] int sourceLineNumber = 0) {
+		public static void Log(string message) {
 
 			if (_logLevel > LogLevel.Log) return;
 			Console.Write("[hLogger] ");
@@ -149,15 +157,13 @@ namespace HLogger {
 		/// Dumps and logs an object using the DEBUG log level.
 		/// </summary>
 		/// <param name="obj">The object to be dumped and logged.</param>
+		/// <param name="name">This parameter is automatically captured and should not be populated</param>
 		/// <remarks>
 		/// Users are encouraged to only populate the 'obj' parameter, allowing other details to be automatically captured.
 		/// The calling member's name, source file path, and source line number are automatically captured.
 		/// </remarks>
 		public static void DebugObject(object obj,
-			[CallerArgumentExpression("obj")] string name = null,
-			[CallerMemberName] string memberName = "",
-			[CallerFilePath] string sourceFilePath = "",
-			[CallerLineNumber] int sourceLineNumber = 0) {
+			[CallerArgumentExpression(nameof(obj))] string? name = null) {
 
 			if (_logLevel > LogLevel.Debug) return;
 			Console.Write("[hLogger] ");
@@ -181,10 +187,7 @@ namespace HLogger {
 		/// Users are encouraged to only populate the 'message' parameter, allowing other details to be automatically captured.
 		/// The calling member's name, source file path, and source line number are automatically captured.
 		/// </remarks>
-		public static void Warning(string message,
-			[CallerMemberName] string memberName = "",
-			[CallerFilePath] string sourceFilePath = "",
-			[CallerLineNumber] int sourceLineNumber = 0) {
+		public static void Warning(string message) {
 
 			if (_logLevel > hLogger.LogLevel.Warning) return;
 			Console.Write("[hLogger] ");
@@ -205,10 +208,7 @@ namespace HLogger {
 		/// Users are encouraged to only populate the 'message' parameter, allowing other details to be automatically captured.
 		/// The calling member's name, source file path, and source line number are automatically captured.
 		/// </remarks>
-		public static void Error(string message,
-			[CallerMemberName] string memberName = "",
-			[CallerFilePath] string sourceFilePath = "",
-			[CallerLineNumber] int sourceLineNumber = 0) {
+		public static void Error(string message) {
 
 			if (_logLevel > hLogger.LogLevel.Error) return;
 			Console.Write("[hLogger] ");
@@ -229,10 +229,7 @@ namespace HLogger {
 		/// Users are encouraged to only populate the 'e' parameter, allowing other details to be automatically captured.
 		/// The calling member's name, source file path, and source line number are automatically captured.
 		/// </remarks>
-		public static void Exception(Exception e,
-			[CallerMemberName] string memberName = "",
-			[CallerFilePath] string sourceFilePath = "",
-			[CallerLineNumber] int sourceLineNumber = 0) {
+		public static void Exception(Exception e) {
 			if (_logLevel > hLogger.LogLevel.Exception) return;
 			Console.Write("[hLogger] ");
 			Console.ForegroundColor = ConsoleColor.DarkRed;
@@ -259,10 +256,7 @@ namespace HLogger {
 		/// The calling member's name, source file path, and source line number are automatically captured.
 		/// </remarks>
 
-		public static void Critical(string message,
-			[CallerMemberName] string memberName = "",
-			[CallerFilePath] string sourceFilePath = "",
-			[CallerLineNumber] int sourceLineNumber = 0) {
+		public static void Critical(string message) {
 
 			if (_logLevel > hLogger.LogLevel.Critical) return;
 			Console.Write("[hLogger] ");
@@ -303,12 +297,12 @@ namespace HLogger {
 		/// If the file does not exist, it will be created.
 		/// </remarks>
 		private static void LogToFile(string message, string filename = "hLogger.log") {
-			string path = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + Path.DirectorySeparatorChar + Assembly.GetEntryAssembly().GetName().Name + Path.DirectorySeparatorChar + "logs";
+			if(Assembly.GetEntryAssembly() == null) return;
+			string path = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + Path.DirectorySeparatorChar + Assembly.GetEntryAssembly()!.GetName().Name + Path.DirectorySeparatorChar + "logs";
 			Directory.CreateDirectory(path);
 			path = Path.Combine(path, filename);
-			using (StreamWriter sw = File.AppendText(path)) {
-				sw.WriteLine(message);
-			}
+			using StreamWriter sw = File.AppendText(path);
+			sw.WriteLine(message);
 		}
 
 	}

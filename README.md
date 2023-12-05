@@ -9,6 +9,7 @@
 - Console output for log messages
 - Logging with customizable log levels
 - Configuration for including source location in the log file
+- Configuration for the log output (None, Terminal only, File only, Both)
 - Lightweight and easy to integrate
 
 ## Installation
@@ -73,6 +74,9 @@ Download the source code and build it yourself.
     - Customize logging configuration.
   
     ```csharp
+    //Set the log output
+    hLogger.SetLogOutput(hLogger.LogOutput.Both);
+    
     // Set the log level
     hLogger.SetLogLevel(LogLevel.All);
 

@@ -78,10 +78,10 @@ Download the source code and build it yourself.
     hLogger.SetLogOutput(hLogger.LogOutput.Both);
     
     // Set the log level
-    hLogger.SetLogLevel(LogLevel.All);
+    hLogger.SetLogLevel(hLogger.LogLevel.All);
 
     // Include source location in log files
-    hLogger.SetIncludeSourceLocation(IncludeSourceLocation.Yes);
+    hLogger.SetIncludeSourceLocation(hLogger.IncludeSourceLocation.Yes);
     ```
 
 

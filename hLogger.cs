@@ -240,7 +240,7 @@ namespace HLogger {
 		/// </remarks>
 		public static void Warning(string message) {
 			if (_logOutput == LogOutput.None) return;
-			if (_logLevel > hLogger.LogLevel.Warning) return;
+			if (_logLevel > LogLevel.Warning) return;
 			if (_logOutput is LogOutput.Both or LogOutput.TerminalOnly) {
 
 				Console.Write("[hLogger] ");
@@ -265,7 +265,7 @@ namespace HLogger {
 		/// </remarks>
 		public static void Error(string message) {
 			if (_logOutput == LogOutput.None) return;			
-			if (_logLevel > hLogger.LogLevel.Error) return;
+			if (_logLevel > LogLevel.Error) return;
 			if (_logOutput is LogOutput.Both or LogOutput.TerminalOnly) {
 
 				Console.Write("[hLogger] ");
@@ -290,7 +290,7 @@ namespace HLogger {
 		/// </remarks>
 		public static void Exception(Exception e) {
 			if (_logOutput == LogOutput.None) return;
-			if (_logLevel > hLogger.LogLevel.Exception) return;
+			if (_logLevel > LogLevel.Exception) return;
 			if (_logOutput is LogOutput.Both or LogOutput.TerminalOnly) {
 
 				Console.Write("[hLogger] ");
@@ -321,7 +321,7 @@ namespace HLogger {
 
 		public static void Critical(string message) {
 			if (_logOutput == LogOutput.None) return;
-			if (_logLevel > hLogger.LogLevel.Critical) return;
+			if (_logLevel > LogLevel.Critical) return;
 			if (_logOutput is LogOutput.Both or LogOutput.TerminalOnly) {
 				Console.Write("[hLogger] ");
 				Console.ForegroundColor = ConsoleColor.DarkYellow;
@@ -346,7 +346,7 @@ namespace HLogger {
 
 		public static void AssemblyInfo() {
 			if (_logOutput == LogOutput.None) return;			
-			if (_logLevel > hLogger.LogLevel.Info) return;
+			if (_logLevel > LogLevel.Info) return;
 			if (_logOutput is not (LogOutput.Both or LogOutput.TerminalOnly)) return;
 			Console.Write("[hLogger] ");
 			Console.ForegroundColor = ConsoleColor.Cyan;

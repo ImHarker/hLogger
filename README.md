@@ -47,7 +47,7 @@ Download the source code and build it yourself.
     
     //Log a dump of an object
     var test = new Message("Hello, World!"); //Example object
-    hLogger.DebugObject(messageTest);
+    hLogger.DebugObject(test);
     
     //Log a warning message
     hLogger.Warning("Warning Test");

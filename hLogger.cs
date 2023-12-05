@@ -79,9 +79,46 @@ namespace HLogger {
 			Yes
 		}
 
+		/// <summary>
+		/// Enumerates options for the location where log messages should be output.
+		/// </summary>
+		public enum LogOutput {
+			/// <summary>
+			/// Do not output log messages to any location.
+			/// </summary>
+			None,
 
-		private static IncludeSourceLocation _includeSourceLocation = IncludeSourceLocation.Yes;
+			/// <summary>
+			/// Output log messages to the terminal/console only.
+			/// </summary>
+			TerminalOnly,
+
+			/// <summary>
+			/// Output log messages to a file only.
+			/// </summary>
+			FileOnly,
+
+			/// <summary>
+			/// Output log messages to both the terminal/console and a file.
+			/// </summary>
+			Both
+		}
+
+
 		private static LogLevel _logLevel = LogLevel.All;
+		private static IncludeSourceLocation _includeSourceLocation = IncludeSourceLocation.Yes;
+		private static LogOutput _logOutput = LogOutput.Both;
+
+		/// <summary>
+		/// Sets the global logging level, specifying the severity threshold for displayed log messages.
+		/// </summary>
+		/// <param name="level">The log level to set.</param>
+		/// /// <remarks>
+		/// Default Value: LogLevel.All
+		/// </remarks>
+		public static void SetLogLevel(LogLevel level) {
+			_logLevel = level;
+		}
 
 		/// <summary>
 		/// Sets the configuration for including or excluding source location information in the log file.
@@ -95,15 +132,16 @@ namespace HLogger {
 		}
 
 		/// <summary>
-		/// Sets the global logging level, specifying the severity threshold for displayed log messages.
+		/// Sets the destination for log messages..
 		/// </summary>
-		/// <param name="level">The log level to set.</param>
+		/// <param name="logOutput">The target location(s) for log messages.</param>
 		/// /// <remarks>
-		/// Default Value: LogLevel.All
+		/// Default Value: LogOutput.Both
 		/// </remarks>
-		public static void SetLogLevel(LogLevel level) {
-			_logLevel = level;
+		public static void SetLogOutput(LogOutput logOutput) {
+			_logOutput = logOutput;
 		}
+
 
 		/// <summary>
 		/// Logs an informational message using the INFO log level.
@@ -119,16 +157,20 @@ namespace HLogger {
 				[CallerFilePath] string sourceFilePath = "",
 				[CallerLineNumber] int sourceLineNumber = 0
 			*/
-
+			if (_logOutput == LogOutput.None) return;
 			if (_logLevel > LogLevel.Info) return;
-			Console.Write("[hLogger] ");
-			Console.ForegroundColor = ConsoleColor.Green;
-			Console.Write("INFO".PadRight(10));
-			Console.ResetColor();
-			Console.Write($"{message}\n");
+			if (_logOutput is LogOutput.Both or LogOutput.TerminalOnly) {
+				Console.Write("[hLogger] ");
+				Console.ForegroundColor = ConsoleColor.Green;
+				Console.Write("INFO".PadRight(10));
+				Console.ResetColor();
+				Console.Write($"{message}\n");
+			}
+
+			if (_logOutput is not (LogOutput.Both or LogOutput.FileOnly)) return;
 			if (_includeSourceLocation == IncludeSourceLocation.Yes)
-				//message = $"{message,-50} | at {Assembly.GetCallingAssembly().GetName().Name}{sourceFilePath.Split(Assembly.GetCallingAssembly().GetName().Name).Last().Split('.').First().Replace(Path.DirectorySeparatorChar, '.')}.{memberName}() in {sourceFilePath}:{sourceLineNumber}";
 				message = $"{message,-50} | {Environment.StackTrace.Split('\n')[2].TrimEnd()}";
+				//message = $"{message,-50} | at {Assembly.GetCallingAssembly().GetName().Name}{sourceFilePath.Split(Assembly.GetCallingAssembly().GetName().Name).Last().Split('.').First().Replace(Path.DirectorySeparatorChar, '.')}.{memberName}() in {sourceFilePath}:{sourceLineNumber}";
 			LogToFile($"[hLogger] {DateTime.Now:yyyy-MM-dd HH:mm:ss} | {"Info",-10} | {message}");
 		}
 
@@ -141,17 +183,21 @@ namespace HLogger {
 		/// The calling member's name, source file path, and source line number are automatically captured.
 		/// </remarks>
 		public static void Log(string message) {
-
+			if (_logOutput == LogOutput.None) return;
 			if (_logLevel > LogLevel.Log) return;
-			Console.Write("[hLogger] ");
-			Console.ForegroundColor = ConsoleColor.Blue;
-			Console.Write("LOG".PadRight(10));
-			Console.ResetColor();
-			Console.Write($"{message}\n");
+			if (_logOutput is LogOutput.Both or LogOutput.TerminalOnly) {
+				Console.Write("[hLogger] ");
+				Console.ForegroundColor = ConsoleColor.Blue;
+				Console.Write("LOG".PadRight(10));
+				Console.ResetColor();
+				Console.Write($"{message}\n");
+			}
+			if (_logOutput is not (LogOutput.Both or LogOutput.FileOnly)) return;
 			if (_includeSourceLocation == IncludeSourceLocation.Yes)
 				message = $"{message,-50} | {Environment.StackTrace.Split('\n')[2].TrimEnd()}";
 			LogToFile($"[hLogger] {DateTime.Now:yyyy-MM-dd HH:mm:ss} | {"Log",-10} | {message}");
 		}
+
 
 		/// <summary>
 		/// Dumps and logs an object using the DEBUG log level.
@@ -164,15 +210,20 @@ namespace HLogger {
 		/// </remarks>
 		public static void DebugObject(object obj,
 			[CallerArgumentExpression(nameof(obj))] string? name = null) {
-
+			
+			if (_logOutput == LogOutput.None) return;
 			if (_logLevel > LogLevel.Debug) return;
-			Console.Write("[hLogger] ");
-			Console.ForegroundColor = ConsoleColor.Magenta;
-			Console.Write("DEBUG".PadRight(10));
-			Console.ResetColor();
-			var txt = name == null ? obj.GetType().Name : $"{name} ({obj.GetType().Name})";
-			Console.Write($"{txt}\n");
-			Console.Write($"{System.Text.Json.JsonSerializer.Serialize(obj, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }).Replace("\n", "\n\t\t\t").Insert(0, "\t\t\t")}\n");
+				var txt = name == null ? obj.GetType().Name : $"{name} ({obj.GetType().Name})";
+			if (_logOutput is LogOutput.Both or LogOutput.TerminalOnly) {
+				Console.Write("[hLogger] ");
+				Console.ForegroundColor = ConsoleColor.Magenta;
+				Console.Write("DEBUG".PadRight(10));
+				Console.ResetColor();
+				Console.Write($"{txt}\n");
+				Console.Write(
+					$"{System.Text.Json.JsonSerializer.Serialize(obj, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }).Replace("\n", "\n\t\t\t").Insert(0, "\t\t\t")}\n");
+			}
+			if (_logOutput is not (LogOutput.Both or LogOutput.FileOnly)) return;
 			if (_includeSourceLocation == IncludeSourceLocation.Yes)
 				txt = $"{txt,-50} | {Environment.StackTrace.Split('\n')[2].TrimEnd()}";
 			LogToFile($"[hLogger] {DateTime.Now:yyyy-MM-dd HH:mm:ss} | {"Debug",-10} | {txt}");
@@ -188,13 +239,17 @@ namespace HLogger {
 		/// The calling member's name, source file path, and source line number are automatically captured.
 		/// </remarks>
 		public static void Warning(string message) {
-
+			if (_logOutput == LogOutput.None) return;
 			if (_logLevel > hLogger.LogLevel.Warning) return;
-			Console.Write("[hLogger] ");
-			Console.ForegroundColor = ConsoleColor.DarkYellow;
-			Console.Write("WARNING".PadRight(10));
-			Console.ResetColor();
-			Console.Write($"{message}\n");
+			if (_logOutput is LogOutput.Both or LogOutput.TerminalOnly) {
+
+				Console.Write("[hLogger] ");
+				Console.ForegroundColor = ConsoleColor.DarkYellow;
+				Console.Write("WARNING".PadRight(10));
+				Console.ResetColor();
+				Console.Write($"{message}\n");
+			}
+			if (_logOutput is not (LogOutput.Both or LogOutput.FileOnly)) return;
 			if (_includeSourceLocation == IncludeSourceLocation.Yes)
 				message = $"{message,-50} | {Environment.StackTrace.Split('\n')[2].TrimEnd()}";
 			LogToFile($"[hLogger] {DateTime.Now:yyyy-MM-dd HH:mm:ss} | {"Warning",-10} | {message}");
@@ -209,13 +264,17 @@ namespace HLogger {
 		/// The calling member's name, source file path, and source line number are automatically captured.
 		/// </remarks>
 		public static void Error(string message) {
-
+			if (_logOutput == LogOutput.None) return;			
 			if (_logLevel > hLogger.LogLevel.Error) return;
-			Console.Write("[hLogger] ");
-			Console.ForegroundColor = ConsoleColor.DarkRed;
-			Console.Write("ERROR".PadRight(10));
-			Console.ResetColor();
-			Console.Write($"{message}\n");
+			if (_logOutput is LogOutput.Both or LogOutput.TerminalOnly) {
+
+				Console.Write("[hLogger] ");
+				Console.ForegroundColor = ConsoleColor.DarkRed;
+				Console.Write("ERROR".PadRight(10));
+				Console.ResetColor();
+				Console.Write($"{message}\n");
+			}
+			if (_logOutput is not (LogOutput.Both or LogOutput.FileOnly)) return;
 			if (_includeSourceLocation == IncludeSourceLocation.Yes)
 				message = $"{message,-50} | {Environment.StackTrace.Split('\n')[2].TrimEnd()}";
 			LogToFile($"[hLogger] {DateTime.Now:yyyy-MM-dd HH:mm:ss} | {"Error",-10} | {message}");
@@ -230,21 +289,25 @@ namespace HLogger {
 		/// The calling member's name, source file path, and source line number are automatically captured.
 		/// </remarks>
 		public static void Exception(Exception e) {
+			if (_logOutput == LogOutput.None) return;
 			if (_logLevel > hLogger.LogLevel.Exception) return;
-			Console.Write("[hLogger] ");
-			Console.ForegroundColor = ConsoleColor.DarkRed;
-			Console.Write("EXCEPTION".PadRight(10));
-			Console.ResetColor();
-			Console.Write($"{e.Message}\n");
+			if (_logOutput is LogOutput.Both or LogOutput.TerminalOnly) {
+
+				Console.Write("[hLogger] ");
+				Console.ForegroundColor = ConsoleColor.DarkRed;
+				Console.Write("EXCEPTION".PadRight(10));
+				Console.ResetColor();
+				Console.Write($"{e.Message}\n");
+				if (!String.IsNullOrEmpty(e.StackTrace))
+					Console.Write(e.StackTrace.Replace(" at ", "\t  at ") + "\n");
+			}
+			if (_logOutput is not (LogOutput.Both or LogOutput.FileOnly)) return;
 			var message = e.Message;
 			if (_includeSourceLocation == IncludeSourceLocation.Yes)
 				message = $"{message,-50} | {Environment.StackTrace.Split('\n')[2].TrimEnd()}";
 			LogToFile($"[hLogger] {DateTime.Now:yyyy-MM-dd HH:mm:ss} | {"Exception",-10} | {message}");
-			if (!String.IsNullOrEmpty(e.StackTrace)) {
-				var msg = e.StackTrace.Replace(" at ", "\t  at ");
-				Console.Write(msg + "\n");
-				LogToFile($"[hLogger] {DateTime.Now:yyyy-MM-dd HH:mm:ss} | {"Exception",-10} | {msg}");
-			}
+			if (!String.IsNullOrEmpty(e.StackTrace))
+				LogToFile($"[hLogger] {DateTime.Now:yyyy-MM-dd HH:mm:ss} | {"Exception",-10} | {e.StackTrace.Replace(" at ", "\t  at ")}");
 		}
 
 		/// <summary>
@@ -257,15 +320,18 @@ namespace HLogger {
 		/// </remarks>
 
 		public static void Critical(string message) {
-
+			if (_logOutput == LogOutput.None) return;
 			if (_logLevel > hLogger.LogLevel.Critical) return;
-			Console.Write("[hLogger] ");
-			Console.ForegroundColor = ConsoleColor.DarkYellow;
-			Console.BackgroundColor = ConsoleColor.DarkRed;
-			Console.Write("\u001b[1m");
-			Console.Write("CRITICAL");
-			Console.ResetColor();
-			Console.Write($"  {message}\n");
+			if (_logOutput is LogOutput.Both or LogOutput.TerminalOnly) {
+				Console.Write("[hLogger] ");
+				Console.ForegroundColor = ConsoleColor.DarkYellow;
+				Console.BackgroundColor = ConsoleColor.DarkRed;
+				Console.Write("\u001b[1m");
+				Console.Write("CRITICAL");
+				Console.ResetColor();
+				Console.Write($"  {message}\n");
+			}
+			if (_logOutput is not (LogOutput.Both or LogOutput.FileOnly)) return;
 			if (_includeSourceLocation == IncludeSourceLocation.Yes)
 				message = $"{message,-50} | {Environment.StackTrace.Split('\n')[2].TrimEnd()}";
 			LogToFile($"[hLogger] {DateTime.Now:yyyy-MM-dd HH:mm:ss} | {"Critical",-10} | {message}");
@@ -279,7 +345,9 @@ namespace HLogger {
 		/// </remarks>
 
 		public static void AssemblyInfo() {
+			if (_logOutput == LogOutput.None) return;			
 			if (_logLevel > hLogger.LogLevel.Info) return;
+			if (_logOutput is not (LogOutput.Both or LogOutput.TerminalOnly)) return;
 			Console.Write("[hLogger] ");
 			Console.ForegroundColor = ConsoleColor.Cyan;
 			Console.Write("ASSEMBLY".PadRight(10));
@@ -297,7 +365,7 @@ namespace HLogger {
 		/// If the file does not exist, it will be created.
 		/// </remarks>
 		private static void LogToFile(string message, string filename = "hLogger.log") {
-			if(Assembly.GetEntryAssembly() == null) return;
+			if (Assembly.GetEntryAssembly() == null) return;
 			string path = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + Path.DirectorySeparatorChar + Assembly.GetEntryAssembly()!.GetName().Name + Path.DirectorySeparatorChar + "logs";
 			Directory.CreateDirectory(path);
 			path = Path.Combine(path, filename);

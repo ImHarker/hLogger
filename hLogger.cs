@@ -442,9 +442,6 @@ namespace HLogger {
 			if (_thread != null) {
 				_cancellationTokenSource.Cancel();
 				_thread.Join();
-				_cancellationTokenSource.Dispose();
-				_cancellationTokenSource = null;
-				_thread = null;
 			}
 		}
 
@@ -455,9 +452,9 @@ namespace HLogger {
 		/// <param name="cancellationToken">Cancellation token to gracefully stop the thread.</param>
 
 		private static void StartMemoryThresholdThread(long threshold, CancellationToken cancellationToken) {
-			if (_logOutput == LogOutput.None) return;
-			if (_logLevel > LogLevel.Debug) return;
 			while (!cancellationToken.IsCancellationRequested) {
+				if (_logOutput == LogOutput.None) return;
+				if (_logLevel > LogLevel.Critical) return;
 				Thread.Sleep(10);
 				var txt = "";
 				if (GC.GetTotalMemory(false) > threshold * 1024 * 1024) {
@@ -483,6 +480,9 @@ namespace HLogger {
 				}
 				Thread.Sleep(1000);
 			}
+			_cancellationTokenSource.Dispose();
+			_cancellationTokenSource = null;
+			_thread = null;
 		}
 
 		/// <summary>

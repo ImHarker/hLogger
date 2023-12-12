@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace HLogger {
 
@@ -108,7 +109,8 @@ namespace HLogger {
 		private static readonly Stopwatch _stopwatch = new Stopwatch();
 		private static Thread? _thread;
 		private static CancellationTokenSource? _cancellationTokenSource;
-		private static readonly Mutex _logMutex = new Mutex();
+		private static readonly Mutex _terminalMutex = new Mutex();
+		private static readonly Mutex _fileMutex = new Mutex();
 		private static LogLevel _logLevel = LogLevel.All;
 		private static IncludeSourceLocation _includeSourceLocation = IncludeSourceLocation.Yes;
 		private static LogOutput _logOutput = LogOutput.Both;
@@ -163,22 +165,13 @@ namespace HLogger {
 			*/
 			if (_logOutput == LogOutput.None) return;
 			if (_logLevel > LogLevel.Info) return;
-			if (_logOutput is LogOutput.Both or LogOutput.TerminalOnly) {
-				_logMutex.WaitOne();
-				Console.Write("[hLogger] ");
-				Console.ForegroundColor = ConsoleColor.Green;
-				Console.Write("INFO".PadRight(10));
-				Console.ResetColor();
-				Console.Write($"{message}\n");
-				_logMutex.ReleaseMutex();
-			}
+			if (_logOutput is LogOutput.Both or LogOutput.TerminalOnly)
+				LogToTerminal(message, LogLevel.Info);
 			if (_logOutput is not (LogOutput.Both or LogOutput.FileOnly)) return;
 			if (_includeSourceLocation == IncludeSourceLocation.Yes)
 				message = $"{message,-50} | {Environment.StackTrace.Split('\n')[2].TrimEnd()}";
 			//message = $"{message,-50} | at {Assembly.GetCallingAssembly().GetName().Name}{sourceFilePath.Split(Assembly.GetCallingAssembly().GetName().Name).Last().Split('.').First().Replace(Path.DirectorySeparatorChar, '.')}.{memberName}() in {sourceFilePath}:{sourceLineNumber}";
-			_logMutex.WaitOne();
 			LogToFile($"[hLogger] {DateTime.Now:yyyy-MM-dd HH:mm:ss} | {"Info",-10} | {message}");
-			_logMutex.ReleaseMutex();
 		}
 
 		/// <summary>
@@ -192,21 +185,12 @@ namespace HLogger {
 		public static void Log(string message) {
 			if (_logOutput == LogOutput.None) return;
 			if (_logLevel > LogLevel.Log) return;
-			if (_logOutput is LogOutput.Both or LogOutput.TerminalOnly) {
-				_logMutex.WaitOne();
-				Console.Write("[hLogger] ");
-				Console.ForegroundColor = ConsoleColor.Blue;
-				Console.Write("LOG".PadRight(10));
-				Console.ResetColor();
-				Console.Write($"{message}\n");
-				_logMutex.ReleaseMutex();
-			}
+			if (_logOutput is LogOutput.Both or LogOutput.TerminalOnly)
+				LogToTerminal(message, LogLevel.Log);
 			if (_logOutput is not (LogOutput.Both or LogOutput.FileOnly)) return;
 			if (_includeSourceLocation == IncludeSourceLocation.Yes)
 				message = $"{message,-50} | {Environment.StackTrace.Split('\n')[2].TrimEnd()}";
-			_logMutex.WaitOne();
 			LogToFile($"[hLogger] {DateTime.Now:yyyy-MM-dd HH:mm:ss} | {"Log",-10} | {message}");
-			_logMutex.ReleaseMutex();
 		}
 
 
@@ -226,23 +210,14 @@ namespace HLogger {
 			if (_logLevel > LogLevel.Debug) return;
 			var txt = name == null ? obj.GetType().Name : $"{name} ({obj.GetType().Name})";
 			if (_logOutput is LogOutput.Both or LogOutput.TerminalOnly) {
-				_logMutex.WaitOne();
-				Console.Write("[hLogger] ");
-				Console.ForegroundColor = ConsoleColor.Magenta;
-				Console.Write("DEBUG".PadRight(10));
-				Console.ResetColor();
-				Console.Write($"{txt}\n");
-				Console.Write(
-					$"{System.Text.Json.JsonSerializer.Serialize(obj, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }).Replace("\n", "\n\t\t\t").Insert(0, "\t\t\t")}\n");
-				_logMutex.ReleaseMutex();
+				var msg = txt + "\n" + $"{System.Text.Json.JsonSerializer.Serialize(obj, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }).Replace("\n", "\n\t\t\t").Insert(0, "\t\t\t")}";
+				LogToTerminal(msg, LogLevel.Debug);
 			}
 			if (_logOutput is not (LogOutput.Both or LogOutput.FileOnly)) return;
 			if (_includeSourceLocation == IncludeSourceLocation.Yes)
 				txt = $"{txt,-50} | {Environment.StackTrace.Split('\n')[2].TrimEnd()}";
-			_logMutex.WaitOne();
 			LogToFile($"[hLogger] {DateTime.Now:yyyy-MM-dd HH:mm:ss} | {"Debug",-10} | {txt}");
 			LogToFile($"{System.Text.Json.JsonSerializer.Serialize(obj, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }).Replace("\n", "\n\t\t\t\t\t\t").Insert(0, "\t\t\t\t\t\t")}");
-			_logMutex.ReleaseMutex();
 		}
 
 		/// <summary>
@@ -256,21 +231,12 @@ namespace HLogger {
 		public static void Warning(string message) {
 			if (_logOutput == LogOutput.None) return;
 			if (_logLevel > LogLevel.Warning) return;
-			if (_logOutput is LogOutput.Both or LogOutput.TerminalOnly) {
-				_logMutex.WaitOne();
-				Console.Write("[hLogger] ");
-				Console.ForegroundColor = ConsoleColor.DarkYellow;
-				Console.Write("WARNING".PadRight(10));
-				Console.ResetColor();
-				Console.Write($"{message}\n");
-				_logMutex.ReleaseMutex();
-			}
+			if (_logOutput is LogOutput.Both or LogOutput.TerminalOnly)
+				LogToTerminal(message, LogLevel.Warning);
 			if (_logOutput is not (LogOutput.Both or LogOutput.FileOnly)) return;
 			if (_includeSourceLocation == IncludeSourceLocation.Yes)
 				message = $"{message,-50} | {Environment.StackTrace.Split('\n')[2].TrimEnd()}";
-			_logMutex.WaitOne();
 			LogToFile($"[hLogger] {DateTime.Now:yyyy-MM-dd HH:mm:ss} | {"Warning",-10} | {message}");
-			_logMutex.ReleaseMutex();
 		}
 
 		/// <summary>
@@ -284,21 +250,12 @@ namespace HLogger {
 		public static void Error(string message) {
 			if (_logOutput == LogOutput.None) return;
 			if (_logLevel > LogLevel.Error) return;
-			if (_logOutput is LogOutput.Both or LogOutput.TerminalOnly) {
-				_logMutex.WaitOne();
-				Console.Write("[hLogger] ");
-				Console.ForegroundColor = ConsoleColor.DarkRed;
-				Console.Write("ERROR".PadRight(10));
-				Console.ResetColor();
-				Console.Write($"{message}\n");
-				_logMutex.ReleaseMutex();
-			}
+			if (_logOutput is LogOutput.Both or LogOutput.TerminalOnly)
+				LogToTerminal(message, LogLevel.Error);
 			if (_logOutput is not (LogOutput.Both or LogOutput.FileOnly)) return;
 			if (_includeSourceLocation == IncludeSourceLocation.Yes)
 				message = $"{message,-50} | {Environment.StackTrace.Split('\n')[2].TrimEnd()}";
-			_logMutex.WaitOne();
 			LogToFile($"[hLogger] {DateTime.Now:yyyy-MM-dd HH:mm:ss} | {"Error",-10} | {message}");
-			_logMutex.ReleaseMutex();
 		}
 
 		/// <summary>
@@ -313,25 +270,18 @@ namespace HLogger {
 			if (_logOutput == LogOutput.None) return;
 			if (_logLevel > LogLevel.Exception) return;
 			if (_logOutput is LogOutput.Both or LogOutput.TerminalOnly) {
-				_logMutex.WaitOne();
-				Console.Write("[hLogger] ");
-				Console.ForegroundColor = ConsoleColor.DarkRed;
-				Console.Write("EXCEPTION".PadRight(10));
-				Console.ResetColor();
-				Console.Write($"{e.Message}\n");
+				var txt = e.Message;
 				if (!String.IsNullOrEmpty(e.StackTrace))
-					Console.Write(e.StackTrace.Replace(" at ", "\t  at ") + "\n");
-				_logMutex.ReleaseMutex();
+					txt += "\n" + e.StackTrace.Replace(" at ", "\t  at ");
+				LogToTerminal(txt, LogLevel.Exception);
 			}
 			if (_logOutput is not (LogOutput.Both or LogOutput.FileOnly)) return;
 			var message = e.Message;
 			if (_includeSourceLocation == IncludeSourceLocation.Yes)
 				message = $"{message,-50} | {Environment.StackTrace.Split('\n')[2].TrimEnd()}";
-			_logMutex.WaitOne();
 			LogToFile($"[hLogger] {DateTime.Now:yyyy-MM-dd HH:mm:ss} | {"Exception",-10} | {message}");
 			if (!String.IsNullOrEmpty(e.StackTrace))
 				LogToFile($"[hLogger] {DateTime.Now:yyyy-MM-dd HH:mm:ss} | {"Exception",-10} | {e.StackTrace.Replace(" at ", "\t  at ")}");
-			_logMutex.ReleaseMutex();
 		}
 
 		/// <summary>
@@ -347,22 +297,12 @@ namespace HLogger {
 			if (_logOutput == LogOutput.None) return;
 			if (_logLevel > LogLevel.Critical) return;
 			if (_logOutput is LogOutput.Both or LogOutput.TerminalOnly) {
-				_logMutex.WaitOne();
-				Console.Write("[hLogger] ");
-				Console.ForegroundColor = ConsoleColor.DarkYellow;
-				Console.BackgroundColor = ConsoleColor.DarkRed;
-				Console.Write("\u001b[1m");
-				Console.Write("CRITICAL");
-				Console.ResetColor();
-				Console.Write($"  {message}\n");
-				_logMutex.ReleaseMutex();
+				LogToTerminal(message, LogLevel.Critical);
 			}
 			if (_logOutput is not (LogOutput.Both or LogOutput.FileOnly)) return;
 			if (_includeSourceLocation == IncludeSourceLocation.Yes)
 				message = $"{message,-50} | {Environment.StackTrace.Split('\n')[2].TrimEnd()}";
-			_logMutex.WaitOne();
 			LogToFile($"[hLogger] {DateTime.Now:yyyy-MM-dd HH:mm:ss} | {"Critical",-10} | {message}");
-			_logMutex.ReleaseMutex();
 		}
 
 		/// <summary>
@@ -376,13 +316,11 @@ namespace HLogger {
 			if (_logOutput == LogOutput.None) return;
 			if (_logLevel > LogLevel.Info) return;
 			if (_logOutput is not (LogOutput.Both or LogOutput.TerminalOnly)) return;
-			_logMutex.WaitOne();
 			Console.Write("[hLogger] ");
 			Console.ForegroundColor = ConsoleColor.Cyan;
 			Console.Write("ASSEMBLY".PadRight(10));
 			Console.ResetColor();
 			Console.Write($"{Assembly.GetCallingAssembly().FullName}\n");
-			_logMutex.ReleaseMutex();
 		}
 
 		/// <summary>
@@ -406,31 +344,22 @@ namespace HLogger {
 			if (_logOutput == LogOutput.None) return;
 			if (_logLevel > LogLevel.Debug) return;
 			var txt = $"{operation} took {(_stopwatch.Elapsed.TotalSeconds >= 1.0 ? _stopwatch.Elapsed.TotalSeconds.ToString("F3") + "s" : _stopwatch.Elapsed.TotalMilliseconds.ToString("F1") + "ms")}";
-			if (_logOutput is LogOutput.Both or LogOutput.TerminalOnly) {
-				_logMutex.WaitOne();
-				Console.Write("[hLogger] ");
-				Console.ForegroundColor = ConsoleColor.Magenta;
-				Console.Write("TIMER".PadRight(10));
-				Console.ResetColor();
-				Console.Write($"{txt}\n");
-				_logMutex.ReleaseMutex();
-			}
+			if (_logOutput is LogOutput.Both or LogOutput.TerminalOnly)
+				LogToTerminal(txt, tag: "TIMER");
 			if (_logOutput is not (LogOutput.Both or LogOutput.FileOnly)) return;
 			if (_includeSourceLocation == IncludeSourceLocation.Yes)
 				txt = $"{txt,-50} | {Environment.StackTrace.Split('\n')[2].TrimEnd()}";
-			_logMutex.WaitOne();
 			LogToFile($"[hLogger] {DateTime.Now:yyyy-MM-dd HH:mm:ss} | {"Timer",-10} | {txt}");
-			_logMutex.ReleaseMutex();
 		}
 
 		/// <summary>
-		/// Starts a background thread to monitor memory usage and logs every 1s if it exceeds the specified threshold.
+		/// Starts a background thread to monitor memory usage and logs every 1s if it exceeds the specified threshold in megabytes(MB).
 		/// </summary>
-		/// <param name="memoryThreshold">The memory threshold in megabytes.</param>
-		public static void StartMemoryThreshold(long memoryThreshold) {
+		/// <param name="memoryThresholdMegaBytes">The memory threshold in megabytes(MB).</param>
+		public static void StartMemoryThreshold(long memoryThresholdMegaBytes) {
 			if (_thread == null) {
 				_cancellationTokenSource = new CancellationTokenSource();
-				_thread = new Thread(() => StartMemoryThresholdThread(memoryThreshold, _cancellationTokenSource.Token));
+				_thread = new Thread(() => StartMemoryThresholdThread(memoryThresholdMegaBytes, _cancellationTokenSource.Token));
 				_thread.Start();
 			}
 		}
@@ -440,7 +369,7 @@ namespace HLogger {
 		/// </summary>
 		public static void StopMemoryThreshold() {
 			if (_thread != null) {
-				_cancellationTokenSource.Cancel();
+				_cancellationTokenSource!.Cancel();
 				_thread.Join();
 			}
 		}
@@ -461,28 +390,17 @@ namespace HLogger {
 					txt = $"Memory usage exceeds threshold ({threshold}MB): {GC.GetTotalMemory(false) / (1024 * 1024):F2}MB";
 					Thread.Sleep(1000);
 				} else continue;
-				if (_logOutput is LogOutput.Both or LogOutput.TerminalOnly) {
-					_logMutex.WaitOne();
-					Console.Write("[hLogger] ");
-					Console.ForegroundColor = ConsoleColor.DarkYellow;
-					Console.BackgroundColor = ConsoleColor.DarkRed;
-					Console.Write("\u001b[1m");
-					Console.Write("MEMORY");
-					Console.ResetColor();
-					Console.Write($"    {txt}\n");
-					_logMutex.ReleaseMutex();
-				}
-
+				if (_logOutput is LogOutput.Both or LogOutput.TerminalOnly)
+					LogToTerminal(txt, tag: "MEMORY_THRESHOLD");
 				if (_logOutput is (LogOutput.Both or LogOutput.FileOnly)) {
-					_logMutex.WaitOne();
 					LogToFile($"[hLogger] {DateTime.Now:yyyy-MM-dd HH:mm:ss} | {"Memory",-10} | {txt}");
-					_logMutex.ReleaseMutex();
 				}
 				Thread.Sleep(1000);
 			}
-			_cancellationTokenSource.Dispose();
+			_cancellationTokenSource!.Dispose();
 			_cancellationTokenSource = null;
 			_thread = null;
+			
 		}
 
 		/// <summary>
@@ -493,21 +411,101 @@ namespace HLogger {
 			if (_logOutput == LogOutput.None) return;
 			if (_logLevel > LogLevel.Debug) return;
 			var txt = $"Memory Usage: {GC.GetTotalMemory(false) / (1024 * 1024):F2}MB";
-			if (_logOutput is LogOutput.Both or LogOutput.TerminalOnly) {
-				_logMutex.WaitOne();
-				Console.Write("[hLogger] ");
-				Console.ForegroundColor = ConsoleColor.Magenta;
-				Console.Write("MEMORY".PadRight(10));
-				Console.ResetColor();
-				Console.Write($"{txt}\n");
-				_logMutex.ReleaseMutex();
-			}
+			if (_logOutput is LogOutput.Both or LogOutput.TerminalOnly)
+				LogToTerminal(txt, tag: "MEMORY_INFO");
 			if (_logOutput is not (LogOutput.Both or LogOutput.FileOnly)) return;
 			if (_includeSourceLocation == IncludeSourceLocation.Yes)
 				txt = $"{txt,-50} | {Environment.StackTrace.Split('\n')[2].TrimEnd()}";
-			_logMutex.WaitOne();
 			LogToFile($"[hLogger] {DateTime.Now:yyyy-MM-dd HH:mm:ss} | {"Memory",-10} | {txt}");
-			_logMutex.ReleaseMutex();
+		}
+
+
+
+		/// <summary>
+		/// Internal method for printing the logs to the terminal.
+		/// </summary>
+		/// <param name="message">The message to be printed.</param>
+		/// <param name="logLevel">Log Level.</param>
+		/// <param name="tag">Alternative to Log Levl.</param>
+		/// <remarks>Only LogLevel or Tag should be used. (Ex: Memory is a DegubLevel Log, in order to print Memory Logs the tag is used.</remarks>
+
+		private static void LogToTerminal(string message, LogLevel? logLevel = null, string? tag = null) {
+			_terminalMutex.WaitOne();
+
+			Console.Write("[hLogger] ");
+			if (logLevel != null)
+				switch (logLevel) {
+					case LogLevel.Info:
+						Console.ForegroundColor = ConsoleColor.Green;
+						Console.Write("INFO".PadRight(10));
+						Console.ResetColor();
+						Console.Write($"{message}\n");
+						break;
+					case LogLevel.Log:
+						Console.ForegroundColor = ConsoleColor.Blue;
+						Console.Write("LOG".PadRight(10));
+						Console.ResetColor();
+						Console.Write($"{message}\n");
+						break;
+					case LogLevel.Debug:
+						Console.ForegroundColor = ConsoleColor.Magenta;
+						Console.Write("DEBUG".PadRight(10));
+						Console.ResetColor();
+						Console.Write($"{message}\n");
+						break;
+					case LogLevel.Warning:
+						Console.ForegroundColor = ConsoleColor.DarkYellow;
+						Console.Write("WARNING".PadRight(10));
+						Console.ResetColor();
+						Console.Write($"{message}\n");
+						break;
+					case LogLevel.Error:
+						Console.ForegroundColor = ConsoleColor.DarkRed;
+						Console.Write("ERROR".PadRight(10));
+						Console.ResetColor();
+						Console.Write($"{message}\n");
+						break;
+					case LogLevel.Exception:
+						Console.ForegroundColor = ConsoleColor.DarkRed;
+						Console.Write("EXCEPTION".PadRight(10));
+						Console.ResetColor();
+						Console.Write($"{message}\n");
+						break;
+					case LogLevel.Critical:
+						Console.ForegroundColor = ConsoleColor.DarkYellow;
+						Console.BackgroundColor = ConsoleColor.DarkRed;
+						Console.Write("\u001b[1m");
+						Console.Write("CRITICAL");
+						Console.ResetColor();
+						Console.Write($"  {message}\n");
+						break;
+				}
+
+			if (tag != null)
+				switch (tag) {
+					case "TIMER":
+						Console.ForegroundColor = ConsoleColor.Magenta;
+						Console.Write("TIMER".PadRight(10));
+						Console.ResetColor();
+						Console.Write($"{message}\n");
+						break;
+					case "MEMORY_THRESHOLD":
+						Console.ForegroundColor = ConsoleColor.DarkYellow;
+						Console.BackgroundColor = ConsoleColor.DarkRed;
+						Console.Write("\u001b[1m");
+						Console.Write("MEMORY");
+						Console.ResetColor();
+						Console.Write($"    {message}\n");
+						break;
+					case "MEMORY_INFO":
+						Console.ForegroundColor = ConsoleColor.Magenta;
+						Console.Write("MEMORY".PadRight(10));
+						Console.ResetColor();
+						Console.Write($"{message}\n");
+						break;
+				}
+
+			_terminalMutex.ReleaseMutex();
 		}
 
 		/// <summary>
@@ -520,12 +518,14 @@ namespace HLogger {
 		/// If the file does not exist, it will be created.
 		/// </remarks>
 		private static void LogToFile(string message, string filename = "hLogger.log") {
+			_fileMutex.WaitOne();
 			if (Assembly.GetEntryAssembly() == null) return;
 			string path = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + Path.DirectorySeparatorChar + Assembly.GetEntryAssembly()!.GetName().Name + Path.DirectorySeparatorChar + "logs";
 			Directory.CreateDirectory(path);
 			path = Path.Combine(path, filename);
 			using StreamWriter sw = File.AppendText(path);
 			sw.WriteLine(message);
+			_fileMutex.ReleaseMutex();
 		}
 
 	}

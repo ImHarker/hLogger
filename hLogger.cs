@@ -209,15 +209,22 @@ namespace HLogger {
 			if (_logOutput == LogOutput.None) return;
 			if (_logLevel > LogLevel.Debug) return;
 			var txt = name == null ? obj.GetType().Name : $"{name} ({obj.GetType().Name})";
+			string objInfo;
+			try {
+				objInfo = $"{System.Text.Json.JsonSerializer.Serialize(obj, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }).Replace("\n", "\n\t\t\t\t\t\t").Insert(0, "\t\t\t\t\t\t")}";
+			}
+			catch (NotSupportedException e) {
+				objInfo = e.Message;
+			}
 			if (_logOutput is LogOutput.Both or LogOutput.TerminalOnly) {
-				var msg = txt + "\n" + $"{System.Text.Json.JsonSerializer.Serialize(obj, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }).Replace("\n", "\n\t\t\t").Insert(0, "\t\t\t")}";
+				var msg = txt + "\n" + objInfo;
 				LogToTerminal(msg, LogLevel.Debug);
 			}
 			if (_logOutput is not (LogOutput.Both or LogOutput.FileOnly)) return;
 			if (_includeSourceLocation == IncludeSourceLocation.Yes)
 				txt = $"{txt,-50} | {Environment.StackTrace.Split('\n')[2].TrimEnd()}";
 			LogToFile($"[hLogger] {DateTime.Now:yyyy-MM-dd HH:mm:ss} | {"Debug",-10} | {txt}");
-			LogToFile($"{System.Text.Json.JsonSerializer.Serialize(obj, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }).Replace("\n", "\n\t\t\t\t\t\t").Insert(0, "\t\t\t\t\t\t")}");
+			LogToFile(objInfo);
 		}
 
 		/// <summary>

@@ -1,7 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace HLogger {
 
@@ -23,22 +22,22 @@ namespace HLogger {
 			/// Include all log levels.
 			/// </summary>
 			All,
-
-			/// <summary>
-			/// Informational messages.
-			/// </summary>
-			Info,
-
+			
 			/// <summary>
 			/// General log messages.
 			/// </summary>
-			Log,
+			Trace,
 
 			/// <summary>
 			/// Messages useful for debugging.
 			/// </summary>
 			Debug,
-
+			
+			/// <summary>
+			/// Informational messages.
+			/// </summary>
+			Info,
+			
 			/// <summary>
 			/// Warning messages.
 			/// </summary>
@@ -48,12 +47,7 @@ namespace HLogger {
 			/// Error messages.
 			/// </summary>
 			Error,
-
-			/// <summary>
-			/// Exception messages.
-			/// </summary>
-			Exception,
-
+			
 			/// <summary>
 			/// Critical error messages.
 			/// </summary>
@@ -182,11 +176,11 @@ namespace HLogger {
 		/// Users are encouraged to only populate the 'message' parameter, allowing other details to be automatically captured.
 		/// The calling member's name, source file path, and source line number are automatically captured.
 		/// </remarks>
-		public static void Log(string message) {
+		public static void Trace(string message) {
 			if (_logOutput == LogOutput.None) return;
-			if (_logLevel > LogLevel.Log) return;
+			if (_logLevel > LogLevel.Trace) return;
 			if (_logOutput is LogOutput.Both or LogOutput.TerminalOnly)
-				LogToTerminal(message, LogLevel.Log);
+				LogToTerminal(message, LogLevel.Trace);
 			if (_logOutput is not (LogOutput.Both or LogOutput.FileOnly)) return;
 			if (_includeSourceLocation == IncludeSourceLocation.Yes)
 				message = $"{message,-50} | {Environment.StackTrace.Split('\n')[2].TrimEnd()}";
@@ -273,14 +267,15 @@ namespace HLogger {
 		/// Users are encouraged to only populate the 'e' parameter, allowing other details to be automatically captured.
 		/// The calling member's name, source file path, and source line number are automatically captured.
 		/// </remarks>
-		public static void Exception(Exception e) {
+		public static void Exception(Exception e, bool isCritical = false) {
 			if (_logOutput == LogOutput.None) return;
-			if (_logLevel > LogLevel.Exception) return;
+			if (isCritical && _logLevel > LogLevel.Critical) return;
+			if (!isCritical && _logLevel > LogLevel.Error) return;
 			if (_logOutput is LogOutput.Both or LogOutput.TerminalOnly) {
 				var txt = e.Message;
 				if (!String.IsNullOrEmpty(e.StackTrace))
 					txt += "\n" + e.StackTrace.Replace(" at ", "\t  at ");
-				LogToTerminal(txt, LogLevel.Exception);
+				LogToTerminal(txt, isCritical ? LogLevel.Critical : LogLevel.Error);
 			}
 			if (_logOutput is not (LogOutput.Both or LogOutput.FileOnly)) return;
 			var message = e.Message;
@@ -443,14 +438,14 @@ namespace HLogger {
 			if (logLevel != null)
 				switch (logLevel) {
 					case LogLevel.Info:
-						Console.ForegroundColor = ConsoleColor.Green;
+						Console.ForegroundColor = ConsoleColor.Blue;
 						Console.Write("INFO".PadRight(10));
 						Console.ResetColor();
 						Console.Write($"{message}\n");
 						break;
-					case LogLevel.Log:
-						Console.ForegroundColor = ConsoleColor.Blue;
-						Console.Write("LOG".PadRight(10));
+					case LogLevel.Trace:
+						Console.ForegroundColor = ConsoleColor.Magenta;
+						Console.Write("TRACE".PadRight(10));
 						Console.ResetColor();
 						Console.Write($"{message}\n");
 						break;
@@ -469,12 +464,6 @@ namespace HLogger {
 					case LogLevel.Error:
 						Console.ForegroundColor = ConsoleColor.DarkRed;
 						Console.Write("ERROR".PadRight(10));
-						Console.ResetColor();
-						Console.Write($"{message}\n");
-						break;
-					case LogLevel.Exception:
-						Console.ForegroundColor = ConsoleColor.DarkRed;
-						Console.Write("EXCEPTION".PadRight(10));
 						Console.ResetColor();
 						Console.Write($"{message}\n");
 						break;
@@ -527,13 +516,12 @@ namespace HLogger {
 		private static void LogToFile(string message, string filename = "hLogger.log") {
 			_fileMutex.WaitOne();
 			if (Assembly.GetEntryAssembly() == null) return;
-			string path = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + Path.DirectorySeparatorChar + Assembly.GetEntryAssembly()!.GetName().Name + Path.DirectorySeparatorChar + "logs";
+			string path = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + Path.DirectorySeparatorChar + Assembly.GetEntryAssembly()!.GetName().Name + Path.DirectorySeparatorChar + "logs";
 			Directory.CreateDirectory(path);
 			path = Path.Combine(path, filename);
 			using StreamWriter sw = File.AppendText(path);
 			sw.WriteLine(message);
 			_fileMutex.ReleaseMutex();
 		}
-
 	}
 }

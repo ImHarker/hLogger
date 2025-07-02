@@ -43,8 +43,8 @@ Download the source code and build it yourself.
     //Log an informational message
     hLogger.Info("Starting hChat Client...");
     
-    //Log an "Log" message
-    hLogger.Log("Log Test");
+    //Log a trace message
+    hLogger.Trace("Trace Test");
     
     //Log a dump of an object
     var test = new Message("Hello, World!"); //Example object
